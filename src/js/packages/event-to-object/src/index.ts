@@ -259,6 +259,16 @@ const eventConverters: { [key: string]: (event: any) => any } = {
 };
 
 function convertElement(element: EventTarget | HTMLElement | null): any {
+  if (!(element instanceof Object))
+    return element;
+
+  if (element instanceof RadioNodeList) {
+    return {
+      value: element.value,
+      ...elementBaseConverter(element),
+    }
+  }
+
   if (!element || !("tagName" in element)) {
     return null;
   }
@@ -275,7 +285,7 @@ function convertElement(element: EventTarget | HTMLElement | null): any {
 
 const convertGenericElement = (element: HTMLElement) => ({
   tagName: element.tagName,
-  boundingClientRect: { ...element.getBoundingClientRect() },
+  //boundingClientRect: { ...element.getBoundingClientRect() },
 });
 
 const convertMediaElement = (element: HTMLMediaElement) => ({
@@ -287,10 +297,12 @@ const convertMediaElement = (element: HTMLMediaElement) => ({
   volume: element.volume,
 });
 
+const elementBaseConverter = (element: EventTarget | HTMLElement | HTMLCollectionBase) => (Object.entries(element).filter((kv: [string, any]) => (!kv[0].startsWith("_"))).map((kv: [string, any]) => ([kv[0], convertElement(kv[1])])).reduce((a, v) => ({ ...a, [v[0]]: v[1]}), {}));
+
 const elementConverters: { [key: string]: (element: any) => any } = {
   AUDIO: convertMediaElement,
-  BUTTON: (element: HTMLButtonElement) => ({ value: element.value }),
-  DATA: (element: HTMLDataElement) => ({ value: element.value }),
+  BUTTON: (element: HTMLButtonElement) => elementBaseConverter(element),
+  DATA: (element: HTMLDataElement) => elementBaseConverter(element),
   DATALIST: (element: HTMLDataListElement) => ({
     options: Array.from(element.options).map(elementConverters["OPTION"]),
   }),
@@ -298,18 +310,20 @@ const elementConverters: { [key: string]: (element: any) => any } = {
     returnValue: element.returnValue,
   }),
   FIELDSET: (element: HTMLFieldSetElement) => ({
-    elements: Array.from(element.elements).map(convertElement),
+    elements: elementBaseConverter(element.elements),
+    ...elementBaseConverter(element),
   }),
   FORM: (element: HTMLFormElement) => ({
-    elements: Array.from(element.elements).map(convertElement),
+    elements: elementBaseConverter(element.elements),
+    ...elementBaseConverter(element),
   }),
-  INPUT: (element: HTMLInputElement) => ({ value: element.value }),
-  METER: (element: HTMLMeterElement) => ({ value: element.value }),
-  OPTION: (element: HTMLOptionElement) => ({ value: element.value }),
-  OUTPUT: (element: HTMLOutputElement) => ({ value: element.value }),
-  PROGRESS: (element: HTMLProgressElement) => ({ value: element.value }),
-  SELECT: (element: HTMLSelectElement) => ({ value: element.value }),
-  TEXTAREA: (element: HTMLTextAreaElement) => ({ value: element.value }),
+  INPUT: (element: HTMLInputElement) => elementBaseConverter(element),
+  METER: (element: HTMLMeterElement) => elementBaseConverter(element),
+  OPTION: (element: HTMLOptionElement) => elementBaseConverter(element),
+  OUTPUT: (element: HTMLOutputElement) => elementBaseConverter(element),
+  PROGRESS: (element: HTMLProgressElement) => elementBaseConverter(element),
+  SELECT: (element: HTMLSelectElement) => elementBaseConverter(element),
+  TEXTAREA: (element: HTMLTextAreaElement) => elementBaseConverter(element),
   VIDEO: convertMediaElement,
 };
 
